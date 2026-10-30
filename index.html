@@ -1,443 +1,1034 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Chemistry Laboratory - Professor Manuhe</title>
-  <!-- Three.js and OrbitControls -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <!-- Google Fonts & FontAwesome -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { font-family: 'Inter', sans-serif; background: #0a0c10; color: #e2e8f0; overflow: hidden; height: 100vh; }
-    #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-    
-    /* Top Bar Header */
-    .header {
-      position: absolute; top: 15px; left: 20px; right: 20px;
-      display: flex; justify-content: space-between; align-items: center;
-      z-index: 10; pointer-events: none;
-    }
-    .brand {
-      display: flex; align-items: center; gap: 12px;
-      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-      padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);
-      pointer-events: auto;
-    }
-    .brand i { color: #38bdf8; font-size: 1.4rem; }
-    .brand h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; color: #f8fafc; }
-    
-    .status-panel {
-      display: flex; gap: 12px; pointer-events: auto;
-    }
-    .stat-badge {
-      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-      padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 0.85rem; font-family: 'Roboto Mono', monospace; display: flex; align-items: center; gap: 8px;
-    }
-
-    /* Left Control Sidebar */
-    .sidebar-left {
-      position: absolute; top: 80px; left: 20px; bottom: 20px; width: 320px;
-      background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(16px);
-      border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
-      z-index: 10; display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    }
-    .panel-header {
-      padding: 14px 18px; background: rgba(30, 41, 59, 0.6);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-weight: 600;
-      font-size: 0.9rem; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;
-    }
-    .panel-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
-
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn {
-      background: #1e293b; color: #f1f5f9; border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
-    }
-    .btn:hover { background: #334155; border-color: #38bdf8; color: #38bdf8; }
-    .btn-primary { background: #0284c7; border-color: #38bdf8; }
-    .btn-primary:hover { background: #0369a1; }
-    .btn-danger { background: #991b1b; border-color: #f87171; }
-    .btn-danger:hover { background: #7f1d1d; }
-
-    /* Chemicals Grid */
-    .chem-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .chem-card {
-      background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
-      display: flex; flex-direction: column; gap: 4px;
-    }
-    .chem-card:hover { background: rgba(51, 65, 85, 0.8); border-color: #38bdf8; transform: translateY(-2px); }
-    .chem-symbol { font-family: 'Roboto Mono', monospace; font-weight: 700; color: #38bdf8; font-size: 1.1rem; }
-    .chem-name { font-size: 0.75rem; color: #94a3b8; }
-
-    /* Right AI Assistant & Microscope */
-    .sidebar-right {
-      position: absolute; top: 80px; right: 20px; bottom: 20px; width: 360px;
-      display: flex; flex-direction: column; gap: 16px; z-index: 10;
-    }
-    .ai-card {
-      background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px);
-      border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.3);
-      flex: 1; display: flex; flex-direction: flex-direction; flex-direction: column; overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    }
-    .prof-profile {
-      padding: 14px; background: rgba(30, 41, 59, 0.7); display: flex; align-items: center; gap: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .prof-avatar {
-      width: 44px; height: 44px; border-radius: 50%; background: #0284c7;
-      display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff;
-      border: 2px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-    }
-    .chat-box { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; }
-    .msg { padding: 10px 12px; border-radius: 10px; max-width: 85%; line-height: 1.4; }
-    .msg-prof { background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1); color: #e2e8f0; align-self: flex-start; }
-    .msg-user { background: #0284c7; color: #fff; align-self: flex-end; }
-    
-    .chat-input { padding: 12px; background: rgba(30, 41, 59, 0.8); display: flex; gap: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-    .chat-input input {
-      flex: 1; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px; padding: 8px 12px; color: #fff; outline: none; font-size: 0.85rem;
-    }
-
-    /* Modal Microscope */
-    .modal {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
-      z-index: 100; align-items: center; justify-content: center;
-    }
-    .modal-content {
-      background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; width: 600px; padding: 20px;
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    .microscope-viewport {
-      width: 100%; height: 350px; background: #000; border-radius: 50%; margin: 0 auto;
-      border: 8px solid #1e293b; box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 0 20px rgba(56, 189, 248, 0.2);
-      position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
-    }
-    #microscope-canvas { width: 100%; height: 100%; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Chemistry Lab - Professor Manuhe</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0d0f12; font-family: 'Inter', system-ui, sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-btn { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); transition: all 0.2s ease; }
+        .glass-btn:hover { background: rgba(51, 65, 85, 0.9); border-color: rgba(56, 189, 248, 0.5); transform: translateY(-1px); }
+        .glass-btn:active { transform: translateY(0); }
+        .glow-cyan { box-shadow: 0 0 15px rgba(6, 182, 212, 0.35); }
+        .glow-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.35); }
+        .glow-red {ų box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+    </style>
 </head>
-<body>
+<body class="text-slate-100 flex h-screen w-screen overflow-hidden">
 
-  <div id="canvas-container"></div>
+    <!-- WebGL Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
 
-  <!-- Header -->
-  <div class="header">
-    <div class="brand">
-      <i class="fa-solid fa-flask-vial"></i>
-      <h1>3D Virtual Chemistry Lab</h1>
+    <!-- Top Navigation Header -->
+    <header class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 pointer-events-none">
+        <div class="flex items-center gap-3 pointer-events-auto">
+            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 shadow-lg shadow-cyan-500/30">
+                <i data-lucide="flask-conical" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-wide bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                    PHOTOREALISTIC 3D LAB
+                </h1>
+                <p class="text-xs text-cyan-400 font-medium tracking-wider uppercase">Virtual Chemical & Microscopic Simulator</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="toggle-safety-btn" class="glass-btn px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold text-slate-200 hover:text-cyan-300">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                <span>Safety Gear: <span id="safety-status" class="text-emerald-400">ON</span></span>
+            </button>
+            <button id="reset-bench-btn" class="glass-btn px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-semibold text-slate-200 hover:text-rose-400">
+                <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
+                <span>Reset Bench</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Left Action Panel: Equipment & Reagents -->
+    <aside class="absolute top-20 left-4 z-10 w-72 flex flex-col gap-3 pointer-events-auto max-h-[calc(100vh-6rem)]">
+        
+        <!-- Lab Control Cards -->
+        <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 shadow-2xl">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>Lab Equipment</span>
+                <i data-lucide="beaker" class="w-4 h-4 text-cyan-400"></i>
+            </h2>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="spawnEquipment('beaker')" class="glass-btn p-2.5 rounded-xl flex flex-col items-center gap-1.5 text-xs text-slate-200">
+                    <i data-lucide="beaker" class="w-5 h-5 text-cyan-400"></i>
+                    <span>Beaker</span>
+                </button>
+                <button onclick="spawnEquipment('flask')" class="glass-btn p-2.5 rounded-xl flex flex-col items-center gap-1.5 text-xs text-slate-200">
+                    <i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i>
+                    <span>Erlenmeyer</span>
+                </button>
+                <button onclick="spawnEquipment('testtube')" class="glass-btn p-2.5 rounded-xl flex flex-col items-center gap-1.5 text-xs text-slate-200">
+                    <i data-lucide="test-tube-2" class="w-5 h-5 text-amber-400"></i>
+                    <span>Test Tube</span>
+                </button>
+                <button onclick="spawnEquipment('cylinder')" class="glass-btn p-2.5 rounded-xl flex flex-col items-center gap-1.5 text-xs text-slate-200">
+                    <i data-lucide="cylinder" class="w-5 h-5 text-emerald-400"></i>
+                    <span>Cylinder</span>
+                </button>
+            </div>
+
+            <!-- Environment Controls -->
+            <div class="border-t border-slate-700/60 pt-3 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                        <i data-lucide="flame" class="w-4 h-4 text-amber-500"></i> Bunsen Burner
+                    </span>
+                    <button id="burner-toggle" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-amber-600 hover:text-white transition-colors">
+                        OFF
+                    </button>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                        <i data-lucide="wind" class="w-4 h-4 text-cyan-400"></i> Stirring Rod
+                    </span>
+                    <button id="stir-toggle" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-cyan-600 hover:text-white transition-colors">
+                        STIR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reagents & Reaction Triggers -->
+        <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3 shadow-2xl overflow-hidden flex-1">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <i data-lucide="atom" class="w-4 h-4 text-emerald-400"></i> Chemical Inventory
+                </h2>
+                <button id="open-periodic-btn" class="text-[11px] text-cyan-400 hover:underline font-semibold">Periodic Table</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-56">
+                <button onclick="addChemical('H2O')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-semibold text-slate-200">Water (H₂O)</div>
+                        <div class="text-[10px] text-slate-400">Neutral Solvent</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-cyan-400/80 shadow-sm shadow-cyan-400"></span>
+                </button>
+                <button onclick="addChemical('Na')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs border-amber-500/30">
+                    <div>
+                        <div class="font-semibold text-amber-300 flex items-center gap-1">
+                            Sodium (Na) <span class="text-[9px] bg-amber-500/20 text-amber-300 px-1 rounded">REACTS VIOLENTLY</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400">Alkali Metal</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-slate-300 shadow-sm"></span>
+                </button>
+                <button onclick="addChemical('HCl')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-semibold text-slate-200">Hydrochloric Acid (HCl)</div>
+                        <div class="text-[10px] text-slate-400">Strong Acid</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-amber-400/80 shadow-sm"></span>
+                </button>
+                <button onclick="addChemical('NaOH')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-semibold text-slate-200">Sodium Hydroxide (NaOH)</div>
+                        <div class="text-[10px] text-slate-400">Strong Base</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-blue-400/80 shadow-sm"></span>
+                </button>
+                <button onclick="addChemical('CuSO4')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-semibold text-slate-200">Copper Sulfate (CuSO₄)</div>
+                        <div class="text-[10px] text-slate-400">Blue Salt Solution</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-blue-600 shadow-sm"></span>
+                </button>
+                <button onclick="addChemical('KMnO4')" class="glass-btn px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-semibold text-slate-200">Potassium Permanganate</div>
+                        <div class="text-[10px] text-slate-400">Deep Purple Oxidizer</div>
+                    </div>
+                    <span class="w-3 h-3 rounded-full bg-purple-600 shadow-sm"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Microscope Station Selector Button -->
+        <button id="microscope-mode-btn" class="glass-btn p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-slate-100 shadow-xl border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 to-slate-900/60 hover:border-emerald-400">
+            <div class="flex items-center gap-2.5">
+                <i data-lucide="microscope" class="w-5 h-5 text-emerald-400"></i>
+                <div class="text-left">
+                    <div>MICROSCOPE STATION</div>
+                    <div class="text-[10px] text-slate-400 font-normal">Examine cellular micro-structures</div>
+                </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-emerald-400"></i>
+        </button>
+    </aside>
+
+    <!-- AI Lab Assistant Panel: Professor Manuhe -->
+    <aside id="ai-assistant-panel" class="absolute top-20 right-4 z-10 w-80 flex flex-col glass-panel rounded-2xl shadow-2xl border border-slate-700/80 overflow-hidden pointer-events-auto h-[calc(100vh-6rem)]">
+        
+        <!-- Professor Manuhe Header Card -->
+        <div class="p-3.5 bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border-b border-slate-700/70 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-500 to-indigo-600 p-0.5 shadow-lg shadow-indigo-500/30">
+                        <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                            <!-- Avatar graphic -->
+                            <i data-lucide="bot" class="w-6 h-6 text-cyan-400"></i>
+                        </div>
+                    </div>
+                    <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm text-slate-100 flex items-center gap-1.5">
+                        Prof. Manuhe
+                        <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">AI</span>
+                    </h3>
+                    <p class="text-[11px] text-indigo-300 font-medium">Senior Chemistry Lead</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat History Container -->
+        <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-3 text-xs">
+            <div class="flex flex-col gap-1 bg-slate-800/60 p-3 rounded-xl border border-slate-700/50">
+                <div class="font-semibold text-cyan-400 flex items-center justify-between">
+                    <span>Prof. Manuhe</span>
+                    <span class="text-[10px] text-slate-500">Just now</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">
+                    Greetings, Chemist! I am <strong>Professor Manuhe</strong>. I'm here to guide your lab experiments, explain reaction dynamics, or help you synthesize compound structures. Try adding Sodium to Water!
+                </p>
+            </div>
+        </div>
+
+        <!-- Live Reaction Monitor Status -->
+        <div id="reaction-status-box" class="px-3 py-2 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 flex items-center gap-1.5">
+                <span id="status-indicator-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Bench Status:</span>
+            </span>
+            <span id="bench-state-text" class="font-mono font-semibold text-emerald-400">EQUILIBRIUM</span>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="p-3 bg-slate-900/90 border-t border-slate-800 flex items-center gap-2">
+            <input type="text" id="chat-input" placeholder="Ask Prof. Manuhe anything..." 
+                class="flex-1 bg-slate-800/80 border border-slate-700 text-xs rounded-xl px-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500/80 transition-all">
+            <button id="chat-send-btn" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white flex items-center justify-center transition-all shadow-md shadow-cyan-500/20 active:scale-95">
+                <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Modal: Interactive Periodic Table Drawer -->
+    <div id="periodic-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-5xl rounded-3xl p-6 shadow-2xl border border-slate-700 flex flex-col gap-4 max-h-[90vh]">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-5 h-5 text-cyan-400"></i>
+                        Periodic Table of Elements
+                    </h2>
+                    <p class="text-xs text-slate-400">Select any element to add to your current lab vessel</p>
+                </div>
+                <button id="close-periodic-btn" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Grid container for 118 elements -->
+            <div id="periodic-grid" class="grid grid-cols-18 gap-1 overflow-x-auto p-2 bg-slate-900/80 rounded-2xl border border-slate-800 min-w-[700px]">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
     </div>
-    <div class="status-panel">
-      <div class="stat-badge"><i class="fa-solid fa-temperature-high" style="color:#f87171;"></i> Temp: <span id="temp-val">25</span>°C</div>
-      <div class="stat-badge"><i class="fa-solid fa-gauge-high" style="color:#38bdf8;"></i> Vol: <span id="vol-val">0</span> mL</div>
+
+    <!-- Modal: Microscope Station Specimen Overlay -->
+    <div id="microscope-overlay" class="fixed inset-0 z-40 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="glass-panel w-full max-w-4xl rounded-3xl p-6 border border-emerald-500/30 flex flex-col gap-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                        <i data-lucide="microscope" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100">HIGH-POWER MICROSCOPE STATION</h2>
+                        <p class="text-xs text-emerald-400">Lens Aperture: 100x Oil Immersion View</p>
+                    </div>
+                </div>
+                <button id="close-microscope-btn" class="glass-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white">
+                    Exit Station
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Microscope Viewport Canvas/Display -->
+                <div class="md:col-span-2 relative aspect-square max-h-[420px] rounded-full border-8 border-slate-800 shadow-2xl bg-black overflow-hidden flex items-center justify-center mx-auto w-full">
+                    <canvas id="microscope-canvas" class="w-full h-full"></canvas>
+                    <!-- Microscope Reticle Overlay -->
+                    <div class="absolute inset-0 pointer-events-none border border-emerald-500/20 rounded-full flex items-center justify-center">
+                        <div class="w-full h-[1px] bg-emerald-500/30"></div>
+                        <div class="h-full w-[1px] bg-emerald-500/30 absolute"></div>
+                        <div class="w-24 h-24 border border-emerald-500/40 rounded-full absolute"></div>
+                    </div>
+                </div>
+
+                <!-- Microscope Control & Specimen Selector Panel -->
+                <div class="flex flex-col gap-4 justify-between">
+                    <div class="flex flex-col gap-3">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Specimen Slide</h3>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button onclick="setSpecimen('blood')" class="specimen-btn glass-btn px-3 py-2.5 rounded-xl text-left text-xs flex items-center gap-2 border-emerald-500/50">
+                                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                                <div>
+                                    <div class="font-semibold text-slate-200">Human Red Blood Cells</div>
+                                    <div class="text-[10px] text-slate-400">Erythrocytes & Leukocytes</div>
+                                </div>
+                            </button>
+                            <button onclick="setSpecimen('bacteria')" class="specimen-btn glass-btn px-3 py-2.5 rounded-xl text-left text-xs flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                                <div>
+                                    <div class="font-semibold text-slate-200">E. Coli Culture</div>
+                                    <div class="text-[10px] text-slate-400">Rod-shaped bacilli clusters</div>
+                                </div>
+                            </button>
+                            <button onclick="setSpecimen('chloroplast')" class="specimen-btn glass-btn px-3 py-2.5 rounded-xl text-left text-xs flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                <div>
+                                    <div class="font-semibold text-slate-200">Plant Chloroplasts</div>
+                                    <div class="text-[10px] text-slate-400">Photosynthetic plant cells</div>
+                                </div>
+                            </button>
+                            <button onclick="setSpecimen('crystal')" class="specimen-btn glass-btn px-3 py-2.5 rounded-xl text-left text-xs flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-cyan-300"></span>
+                                <div>
+                                    <div class="font-semibold text-slate-200">NaCl Crystal Lattice</div>
+                                    <div class="text-[10px] text-slate-400">Ionic cubic salt structure</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Knobs / Sliders -->
+                    <div class="glass-panel p-3 rounded-xl flex flex-col gap-3">
+                        <div>
+                            <div class="flex justify-between text-[11px] font-medium text-slate-300 mb-1">
+                                <span>Fine Focus Adjust</span>
+                                <span id="focus-val" class="text-emerald-400">100%</span>
+                            </div>
+                            <input type="range" id="focus-slider" min="0" max="100" value="100" class="w-full accent-emerald-400">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[11px] font-medium text-slate-300 mb-1">
+                                <span>Aperture Illumination</span>
+                                <span id="light-val" class="text-emerald-400">80%</span>
+                            </div>
+                            <input type="range" id="light-slider" min="10" max="100" value="80" class="w-full accent-emerald-400">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Left Sidebar Controls -->
-  <div class="sidebar-left">
-    <div class="panel-header">
-      <span><i class="fa-solid fa-vial"></i> Chemical Reagents</span>
-      <i class="fa-solid fa-sliders"></i>
-    </div>
-    <div class="panel-body">
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="pourWater()"><i class="fa-solid fa-droplet"></i> Add Water</button>
-        <button class="btn btn-danger" onclick="clearBeaker()"><i class="fa-solid fa-trash"></i> Reset Lab</button>
-      </div>
+    <!-- Application Script Logic -->
+    <script>
+        // --- 1. Audio Engine using Web Audio API ---
+        class SoundFX {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
 
-      <div style="font-size:0.8rem; color:#94a3b8; font-weight:600; margin-top:8px;">AVAILABLE CHEMICALS</div>
-      <div class="chem-grid">
-        <div class="chem-card" onclick="addChemical('Na', 'Sodium (Solid)', '#cbd5e1')">
-          <span class="chem-symbol">Na</span>
-          <span class="chem-name">Sodium Metal</span>
-        </div>
-        <div class="chem-card" onclick="addChemical('HCl', 'Hydrochloric Acid', '#e2e8f0')">
-          <span class="chem-symbol">HCl</span>
-          <span class="chem-name">Acid (10M)</span>
-        </div>
-        <div class="chem-card" onclick="addChemical('CuSO4', 'Copper Sulfate', '#0284c7')">
-          <span class="chem-symbol">CuSO₄</span>
-          <span class="chem-name">Copper Sulfate</span>
-        </div>
-        <div class="chem-card" onclick="addChemical('NaOH', 'Sodium Hydroxide', '#f8fafc')">
-          <span class="chem-symbol">NaOH</span>
-          <span class="chem-name">Base Liquid</span>
-        </div>
-        <div class="chem-card" onclick="addChemical('KNO3', 'Potassium Nitrate', '#f1f5f9')">
-          <span class="chem-symbol">KNO₃</span>
-          <span class="chem-name">Oxidizer</span>
-        </div>
-        <div class="chem-card" onclick="addChemical('Fe', 'Iron Filings', '#475569')">
-          <span class="chem-symbol">Fe</span>
-          <span class="chem-name">Iron Powder</span>
-        </div>
-      </div>
+            // Glass Clink
+            playGlassClink() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
 
-      <div style="margin-top: auto;">
-        <button class="btn" style="width:100%" onclick="openMicroscope()"><i class="fa-solid fa-microscope"></i> Open Microscope Station</button>
-      </div>
-    </div>
-  </div>
+            // Glass Shatter Boom
+            playShatter() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                // Explosion Sub-bass
+                const subOsc = this.ctx.createOscillator();
+                const subGain = this.ctx.createGain();
+                subOsc.type = 'triangle';
+                subOsc.frequency.setValueAtTime(160, this.ctx.currentTime);
+                subOsc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.8);
+                subGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+                subGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
+                subOsc.connect(subGain);
+                subGain.connect(this.ctx.destination);
+                subOsc.start();
+                subOsc.stop(this.ctx.currentTime + 0.8);
 
-  <!-- Right AI Assistant -->
-  <div class="sidebar-right">
-    <div class="ai-card">
-      <div class="prof-profile">
-        <div class="prof-avatar"><i class="fa-solid fa-user-graduate"></i></div>
-        <div>
-          <div style="font-weight:700; font-size:0.95rem; color:#f8fafc;">Professor Manuhe</div>
-          <div style="font-size:0.75rem; color:#38bdf8;">Lab AI Assistant</div>
-        </div>
-      </div>
-      <div class="chat-box" id="chat-box">
-        <div class="msg msg-prof">Greetings Natnael! I am Professor Manuhe. Select reagents from the left panel or ask me any chemical reaction questions!</div>
-      </div>
-      <div class="chat-input">
-        <input type="text" id="user-input" placeholder="Ask Prof. Manuhe..." onkeypress="handleKeyPress(event)">
-        <button class="btn btn-primary" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
-      </div>
-    </div>
-  </div>
+                // High glass crunch noise
+                const bufferSize = this.ctx.sampleRate * 0.4;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 2000;
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(this.ctx.destination);
+                noise.start();
+            }
 
-  <!-- Microscope Modal -->
-  <div class="modal" id="micro-modal">
-    <div class="modal-content">
-      <div class="panel-header">
-        <span><i class="fa-solid fa-microscope"></i> High-Power Digital Microscope (1000x)</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeMicroscope()"></i>
-      </div>
-      <div class="microscope-viewport">
-        <canvas id="microscope-canvas" width="350" height="350"></canvas>
-      </div>
-      <div class="btn-group">
-        <button class="btn" onclick="drawSpecimen('blood')">Blood Cells</button>
-        <button class="btn" onclick="drawSpecimen('bacteria')">Bacteria (E. Coli)</button>
-        <button class="btn" onclick="drawSpecimen('crystals')">CuSO4 Crystals</button>
-      </div>
-    </div>
-  </div>
+            // Liquid Pour/Gurgle
+            playPour() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const bufferSize = this.ctx.sampleRate * 0.5;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(1400, this.ctx.currentTime + 0.5);
+                filter.Q.value = 5;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
 
-  <script>
-    // --- THREE.JS SCENE SETUP ---
-    let scene, camera, renderer, beaker, liquidMesh, controls;
-    let beakerVolume = 0;
-    let beakerTemp = 25;
-    let contents = [];
-
-    function init3D() {
-      const container = document.getElementById('canvas-container');
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a0c10);
-
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 15, 25);
-
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.shadowMap.enabled = true;
-      container.appendChild(renderer.domElement);
-
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.maxPolarAngle = Math.PI / 2 - 0.05;
-
-      // Lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-      scene.add(ambientLight);
-
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(10, 20, 10);
-      dirLight.castShadow = true;
-      scene.add(dirLight);
-
-      const pointLight = new THREE.PointLight(0x38bdf8, 0.5, 20);
-      pointLight.position.set(0, 5, 0);
-      scene.add(pointLight);
-
-      // Lab Workbench
-      const tableGeo = new THREE.BoxGeometry(30, 1, 20);
-      const tableMat = new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.3, metalness: 0.2 });
-      const table = new THREE.Mesh(tableGeo, tableMat);
-      table.position.y = -0.5;
-      table.receiveShadow = true;
-      scene.add(table);
-
-      // Glass Beaker
-      const beakerGeo = new THREE.CylinderGeometry(2.5, 2.5, 6, 32, 1, true);
-      const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.3,
-        roughness: 0.1,
-        metalness: 0.1,
-        transmission: 0.9,
-        ior: 1.5
-      });
-      beaker = new THREE.Mesh(beakerGeo, glassMat);
-      beaker.position.y = 3;
-      scene.add(beaker);
-
-      // Liquid Mesh inside Beaker
-      const liquidGeo = new THREE.CylinderGeometry(2.4, 2.4, 0.1, 32);
-      const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 });
-      liquidMesh = new THREE.Mesh(liquidGeo, liquidMat);
-      liquidMesh.position.y = 0.1;
-      beaker.add(liquidMesh);
-      liquidMesh.visible = false;
-
-      window.addEventListener('resize', onWindowResize);
-      animate();
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    // --- LAB LOGIC ---
-    function pourWater() {
-      beakerVolume += 100;
-      contents.push('H2O');
-      updateLiquidUI(0x38bdf8);
-      profTalk("Added 100mL of distilled Water (H2O).");
-    }
-
-    function addChemical(symbol, name, colorHex) {
-      if (beakerVolume === 0 && symbol !== 'Na') {
-        profTalk("Please add water or liquid medium first before mixing " + name + "!");
-        return;
-      }
-      contents.push(symbol);
-      beakerVolume += 20;
-
-      // Reaction check: KNa + H2O -> Explosion
-      if (contents.includes('KNa') && contents.includes('H2O')) {
-        triggerExplosion();
-        return;
-      }
-
-      updateLiquidUI(parseInt(colorHex.replace('#', '0x')));
-      profTalk(`Added ${name} (${symbol}) into the mixture.`);
-    }
-
-    function updateLiquidUI(hexColor) {
-      document.getElementById('vol-val').innerText = beakerVolume;
-      document.getElementById('temp-val').innerText = beakerTemp;
-      liquidMesh.visible = true;
-      liquidMesh.material.color.setHex(hexColor);
-      let scaleY = Math.min(beakerVolume / 100, 5);
-      liquidMesh.scale.set(1, scaleY, 1);
-      liquidMesh.position.y = -2.9 + (scaleY * 0.5);
-    }
-
-    function triggerExplosion() {
-      beakerTemp = 250;
-      document.getElementById('temp-val').innerText = beakerTemp;
-      liquidMesh.material.color.setHex(0xef4444);
-      profTalk("⚠️ WARNING! Violent Exothermic Reaction detected! Sodium reacts violently with water producing Hydrogen gas and intense heat!");
-      
-      // Camera shake simulation
-      let shakeCount = 0;
-      let interval = setInterval(() => {
-        camera.position.x += (Math.random() - 0.5) * 0.5;
-        shakeCount++;
-        if(shakeCount > 15) clearInterval(interval);
-      }, 50);
-    }
-
-    function clearBeaker() {
-      beakerVolume = 0;
-      beakerTemp = 25;
-      contents = [];
-      liquidMesh.visible = false;
-      document.getElementById('vol-val').innerText = 0;
-      document.getElementById('temp-val').innerText = 25;
-      profTalk("Laboratory workspace reset and beaker cleaned.");
-    }
-
-    // --- AI CHAT LOGIC ---
-    function profTalk(text) {
-      const chatBox = document.getElementById('chat-box');
-      const msg = document.createElement('div');
-      msg.className = 'msg msg-prof';
-      msg.innerText = text;
-      chatBox.appendChild(msg);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function sendMessage() {
-      const input = document.getElementById('user-input');
-      const val = input.value.trim();
-      if (!val) return;
-
-      const chatBox = document.getElementById('chat-box');
-      const userMsg = document.createElement('div');
-      userMsg.className = 'msg msg-user';
-      userMsg.innerText = val;
-      chatBox.appendChild(userMsg);
-
-      input.value = '';
-      
-      setTimeout(() => {
-        profTalk(`Regarding "${val}": As Professor Manuhe, Hello I can explain that chemical stoichiometry and atomic interactions govern this principle. Try combining elements in the lab to observe visual changes!`);
-      }, 800);
-    }
-
-    function handleKeyPress(e) {
-      if (e.key === 'Enter') sendMessage();
-    }
-
-    // --- MICROSCOPE CANVAS ---
-    function openMicroscope() {
-      document.getElementById('micro-modal').style.display = 'flex';
-      drawSpecimen('blood');
-    }
-    function closeMicroscope() {
-      document.getElementById('micro-modal').style.display = 'none';
-    }
-
-    function drawSpecimen(type) {
-      const cvs = document.getElementById('microscope-canvas');
-      const ctx = cvs.getContext('2d');
-      ctx.clearRect(0,0,cvs.width,cvs.height);
-
-      if (type === 'blood') {
-        for(let i=0; i<40; i++) {
-          ctx.beginPath();
-          ctx.arc(Math.random()*350, Math.random()*350, 12, 0, Math.PI*2);
-          ctx.fillStyle = '#dc2626';
-          ctx.fill();
+            // Fizzing / Bubbling
+            playFizz() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const bufferSize = this.ctx.sampleRate * 1.0;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 3500;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.0);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
         }
-      } else if (type === 'bacteria') {
-        ctx.fillStyle = '#22c55e';
-        for(let i=0; i<30; i++) {
-          ctx.fillRect(Math.random()*350, Math.random()*350, 6, 18);
-        }
-      } else {
-        ctx.strokeStyle = '#38bdf8';
-        for(let i=0; i<15; i++) {
-          ctx.strokeRect(Math.random()*250, Math.random()*250, 40, 40);
-        }
-      }
-    }
+        const sfx = new SoundFX();
 
-    window.onload = init3D;
-  </script>
+        // --- 2. Three.js 3D Lab Scene Setup ---
+        let scene, camera, renderer, controls;
+        let mainGlassVessel, liquidMesh, flameMesh, smokeParticles = [];
+        let shardsGroup = null;
+        let isShattered = false;
+
+        // Current chemical state inside vessel
+        let vesselState = {
+            contents: [],
+            color: new THREE.Color(0x38bdf8),
+            fillLevel: 0.4,
+            isBoiling: false,
+            temperature: 22
+        };
+
+        function init3DLab() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0c10);
+            scene.fog = new THREE.FogExp2(0x0a0c10, 0.08);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 2.2, 4.5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't clip beneath bench
+            controls.minDistance = 1.5;
+            controls.maxDistance = 8.0;
+            controls.target.set(0, 0.8, 0);
+
+            // Lighting Setup
+            const ambientLight = new THREE.AmbientLight(0xdde6ff, 0.6);
+            scene.add(ambientLight);
+
+            const mainSpot = new THREE.SpotLight(0xffffff, 2.5);
+            mainSpot.position.set(3, 6, 3);
+            mainSpot.angle = Math.PI / 4;
+            mainSpot.penumbra = 0.8;
+            mainSpot.castShadow = true;
+            mainSpot.shadow.mapSize.width = 2048;
+            mainSpot.shadow.mapSize.height = 2048;
+            scene.add(mainSpot);
+
+            const cyanRimLight = new THREE.DirectionalLight(0x06b6d4, 1.2);
+            cyanRimLight.position.set(-4, 3, -2);
+            scene.add(cyanRimLight);
+
+            // Mahogany Lab Bench Top
+            const benchGeo = new THREE.BoxGeometry(10, 0.2, 5);
+            const benchMat = new THREE.MeshStandardMaterial({
+                color: 0x2b1810,
+                roughness: 0.25,
+                metalness: 0.1,
+            });
+            const bench = new THREE.Mesh(benchGeo, benchMat);
+            bench.position.set(0, -0.1, 0);
+            bench.receiveShadow = true;
+            scene.add(bench);
+
+            // Tiled Background Wall
+            const wallGeo = new THREE.PlaneGeometry(12, 8);
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.4,
+                metalness: 0.2
+            });
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.set(0, 3.8, -2.5);
+            wall.receiveShadow = true;
+            scene.add(wall);
+
+            // Build Initial Vessels and Apparatus
+            buildPrimaryBeaker();
+            buildBunsenBurner();
+
+            // Window Resize Listener
+            window.addEventListener('resize', onWindowResize);
+            
+            // Animation Loop
+            animate();
+        }
+
+        // --- 3. 3D Beaker & Refraction Material Generation ---
+        function buildPrimaryBeaker() {
+            if (mainGlassVessel) scene.remove(mainGlassVessel);
+            if (shardsGroup) scene.remove(shardsGroup);
+            isShattered = false;
+
+            const group = new THREE.Group();
+
+            // Glass Cylinder Geometry
+            const glassGeo = new THREE.CylinderGeometry(0.6, 0.55, 1.4, 32, 1, true);
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.3,
+                roughness: 0.05,
+                metalness: 0.1,
+                transmission: 0.9,
+                ior: 1.5,
+                thickness: 0.2,
+                side: THREE.DoubleSide
+            });
+
+            const glassCylinder = new THREE.Mesh(glassGeo, glassMat);
+            glassCylinder.position.y = 0.7;
+            glassCylinder.castShadow = true;
+            group.add(glassCylinder);
+
+            // Beaker Base
+            const baseGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.04, 32);
+            const baseMesh = new THREE.Mesh(baseGeo, glassMat);
+            baseMesh.position.y = 0.02;
+            group.add(baseMesh);
+
+            // Liquid Interior Volume
+            const liquidGeo = new THREE.CylinderGeometry(0.53, 0.51, 1.0, 32);
+            const liquidMat = new THREE.MeshStandardMaterial({
+                color: vesselState.color,
+                transparent: true,
+                opacity: 0.85,
+                roughness: 0.1,
+                metalness: 0.1
+            });
+            liquidMesh = new THREE.Mesh(liquidGeo, liquidMat);
+            liquidMesh.position.y = 0.52;
+            liquidMesh.scale.set(1, vesselState.fillLevel, 1);
+            group.add(liquidMesh);
+
+            group.position.set(0, 0, 0);
+            scene.add(group);
+            mainGlassVessel = group;
+        }
+
+        // Bunsen Burner 3D Mesh
+        function buildBunsenBurner() {
+            const burnerGroup = new THREE.Group();
+            
+            // Base
+            const baseGeo = new THREE.CylinderGeometry(0.35, 0.4, 0.06, 24);
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
+            const base = new THREE.Mesh(baseGeo, metalMat);
+            burnerGroup.add(base);
+
+            // Barrel
+            const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 16);
+            const barrel = new THREE.Mesh(barrelGeo, metalMat);
+            barrel.position.y = 0.3;
+            burnerGroup.add(barrel);
+
+            // Flame Mesh (Cone)
+            const flameGeo = new THREE.ConeGeometry(0.12, 0.45, 16);
+            const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
+            flameMesh = new THREE.Mesh(flameGeo, flameMat);
+            flameMesh.position.y = 0.8;
+            burnerGroup.add(flameMesh);
+
+            burnerGroup.position.set(1.4, 0, 0);
+            scene.add(burnerGroup);
+        }
+
+        // Shatter Effect Handler for Explosive Reactions
+        function triggerGlassShatter() {
+            if (isShattered || !mainGlassVessel) return;
+            isShattered = true;
+            sfx.playShatter();
+
+            scene.remove(mainGlassVessel);
+
+            shardsGroup = new THREE.Group();
+            const shardGeo = new THREE.TetrahedronGeometry(0.08, 1);
+            const shardMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.7,
+                roughness: 0.1,
+                transmission: 0.8
+            });
+
+            for (let i = 0; i < 45; i++) {
+                const shard = new THREE.Mesh(shardGeo, shardMat);
+                shard.position.set(
+                    (Math.random() - 0.5) * 0.4,
+                    0.5 + Math.random() * 0.5,
+                    (Math.random() - 0.5) * 0.4
+                );
+                shard.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.12,
+                        Math.random() * 0.15 + 0.05,
+                        (Math.random() - 0.5) * 0.12
+                    ),
+                    rotSpeed: new THREE.Vector3(Math.random() * 0.2, Math.random() * 0.2, Math.random() * 0.2)
+                };
+                shardsGroup.add(shard);
+            }
+            scene.add(shardsGroup);
+
+            // Spawn explosive smoke fumes
+            spawnVolumetricSmoke(0xef4444);
+
+            // Update UI status
+            const statusText = document.getElementById('bench-state-text');
+            const dot = document.getElementById('status-indicator-dot');
+            if (statusText) {
+                statusText.innerText = "VESSEL RUPTURED!";
+                statusText.className = "font-mono font-bold text-rose-500 animate-pulse";
+                dot.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
+            }
+        }
+
+        // Spawn volumetric smoke particles
+        function spawnVolumetricSmoke(colorHex) {
+            const smokeGeo = new THREE.SphereGeometry(0.12, 8, 8);
+            const smokeMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.6 });
+
+            for (let i = 0; i < 20; i++) {
+                const p = new THREE.Mesh(smokeGeo, smokeMat.clone());
+                p.position.set((Math.random() - 0.5) * 0.2, 0.8, (Math.random() - 0.5) * 0.2);
+                p.userData = {
+                    vy: Math.random() * 0.03 + 0.02,
+                    vx: (Math.random() - 0.5) * 0.01,
+                    life: 1.0
+                };
+                scene.add(p);
+                smokeParticles.push(p);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Main 3D Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate / Update Shards if shattered
+            if (shardsGroup) {
+                shardsGroup.children.forEach(shard => {
+                    shard.position.add(shard.userData.velocity);
+                    shard.rotation.x += shard.userData.rotSpeed.x;
+                    shard.rotation.y += shard.userData.rotSpeed.y;
+                    shard.userData.velocity.y -= 0.005; // Gravity
+                    if (shard.position.y < 0.04) {
+                        shard.position.y = 0.04; // Floor collision
+                        shard.userData.velocity.set(0, 0, 0);
+                    }
+                });
+            }
+
+            // Smoke animation
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const p = smokeParticles[i];
+                p.position.y += p.userData.vy;
+                p.position.x += p.userData.vx;
+                p.scale.multiplyScalar(1.02);
+                p.material.opacity -= 0.015;
+                if (p.material.opacity <= 0) {
+                    scene.remove(p);
+                    smokeParticles.splice(i, 1);
+                }
+            }
+
+            // Liquid boiling agitation animation
+            if (vesselState.isBoiling && liquidMesh) {
+                liquidMesh.rotation.y += 0.05;
+                liquidMesh.position.x = Math.sin(Date.now() * 0.02) * 0.01;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- 4. Chemical Simulation Engine ---
+        function addChemical(code) {
+            sfx.playPour();
+            vesselState.contents.push(code);
+
+            // Re-evaluate reaction logic
+            const contentsStr = vesselState.contents.sort().join('+');
+
+            // Reaction Case A: Sodium + Water (VIOLENT EXPLOISON)
+            if (vesselState.contents.includes('Na') && vesselState.contents.includes('H2O')) {
+                sfx.playFizz();
+                setTimeout(() => {
+                    triggerGlassShatter();
+                    notifyProfManuhe("DANGER! Alkali metal Sodium reacts violently with Water producing Hydrogen gas ($2Na + 2H_2O \\rightarrow 2NaOH + H_2$) and high heat causing atmospheric glass rupture!");
+                }, 800);
+                return;
+            }
+
+            // Reaction Case B: Acid + Base Neutralization (HCl + NaOH)
+            if (vesselState.contents.includes('HCl') && vesselState.contents.includes('NaOH')) {
+                sfx.playFizz();
+                vesselState.color.setHex(0x94a3b8); // Turns clear/gray salt water
+                if (liquidMesh) liquidMesh.material.color.set(vesselState.color);
+                notifyProfManuhe("Neutralization reaction completed! Hydrochloric acid neutralized Sodium Hydroxide into neutral Salt Water ($NaCl + H_2O$).");
+                return;
+            }
+
+            // Reaction Case C: Copper Sulfate Addition
+            if (code === 'CuSO4') {
+                vesselState.color.setHex(0x2563eb); // Vibrant Blue
+                if (liquidMesh) liquidMesh.material.color.set(vesselState.color);
+                notifyProfManuhe("Added Copper Sulfate Solution ($CuSO_4$). Notice the characteristic deep blue color of aqueous copper ions.");
+                return;
+            }
+
+            // Default chemical addition
+            notifyProfManuhe(`Added ${code} to the reaction vessel. Vessel equilibrium maintained.`);
+        }
+
+        function spawnEquipment(type) {
+            sfx.playGlassClink();
+            if (isShattered) {
+                buildPrimaryBeaker();
+                notifyProfManuhe("New clean lab vessel placed on the bench.");
+            } else {
+                notifyProfManuhe(`Switched active labware configuration to ${type.toUpperCase()}.`);
+            }
+        }
+
+        // Reset Bench State
+        document.getElementById('reset-bench-btn').addEventListener('click', () => {
+            sfx.playGlassClink();
+            vesselState.contents = [];
+            vesselState.color.setHex(0x38bdf8);
+            buildPrimaryBeaker();
+            const statusText = document.getElementById('bench-state-text');
+            const dot = document.getElementById('status-indicator-dot');
+            if (statusText) {
+                statusText.innerText = "EQUILIBRIUM";
+                statusText.className = "font-mono font-semibold text-emerald-400";
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+            }
+            notifyProfManuhe("Lab bench reset to standard pristine conditions.");
+        });
+
+        // --- 5. AI Assistant "Professor Manuhe" & Gemini Integration ---
+        function notifyProfManuhe(text) {
+            const chatBox = document.getElementById('chat-messages');
+            const msg = document.createElement('div');
+            msg.className = "flex flex-col gap-1 bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 text-xs";
+            msg.innerHTML = `
+                <div class="font-semibold text-cyan-400 flex items-center justify-between">
+                    <span>Prof. Manuhe</span>
+                    <span class="text-[10px] text-slate-500">Just now</span>
+                </div>
+                <p class="text-slate-200 leading-relaxed">${text}</p>
+            `;
+            chatBox.appendChild(msg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // User message bubble
+            const chatBox = document.getElementById('chat-messages');
+            const userMsg = document.createElement('div');
+            userMsg.className = "flex flex-col gap-1 bg-cyan-950/40 p-3 rounded-xl border border-cyan-800/40 text-xs ml-4";
+            userMsg.innerHTML = `
+                <div class="font-semibold text-indigo-300">You</div>
+                <p class="text-slate-200 leading-relaxed">${text}</p>
+            `;
+            chatBox.appendChild(userMsg);
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Call Gemini API
+            try {
+                const systemPrompt = "You are Professor Manuhe, a friendly, authoritative, world-class Chemistry Professor. Provide clear, scientific, engaging explanations with formula notation where applicable.";
+                const apiKey = ""; // Canvas runtime key
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Fascinating query! Let's examine the molecular dynamics further.";
+                notifyProfManuhe(reply);
+            } catch (err) {
+                notifyProfManuhe("I'm analyzing the molecular equilibrium of your question. In the meantime, feel free to test reactions on the bench!");
+            }
+        }
+
+        document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        // --- 6. Interactive Microscope Canvas Engine ---
+        let currentSpecimen = 'blood';
+        const microCanvas = document.getElementById('microscope-canvas');
+        const microCtx = microCanvas ? microCanvas.getContext('2d') : null;
+
+        function setSpecimen(type) {
+            currentSpecimen = type;
+            drawMicroscopeView();
+        }
+
+        function drawMicroscopeView() {
+            if (!microCtx) return;
+            const w = microCanvas.width = 400;
+            const h = microCanvas.height = 400;
+
+            microCtx.fillStyle = '#050b14';
+            microCtx.fillRect(0, 0, w, h);
+
+            if (currentSpecimen === 'blood') {
+                // Red Blood Cells
+                for (let i = 0; i < 35; i++) {
+                    const x = (Math.sin(i * 99) * 0.4 + 0.5) * w;
+                    const y = (Math.cos(i * 33) * 0.4 + 0.5) * h;
+                    microCtx.beginPath();
+                    microCtx.arc(x, y, 18, 0, Math.PI * 2);
+                    microCtx.fillStyle = '#e11d48';
+                    microCtx.fill();
+                    microCtx.beginPath();
+                    microCtx.arc(x, y, 8, 0, Math.PI * 2);
+                    microCtx.fillStyle = '#9f1239';
+                    microCtx.fill();
+                }
+            } else if (currentSpecimen === 'bacteria') {
+                // E. Coli Rods
+                microCtx.fillStyle = '#34d399';
+                for (let i = 0; i < 40; i++) {
+                    const x = (Math.sin(i * 45) * 0.4 + 0.5) * w;
+                    const y = (Math.cos(i * 77) * 0.4 + 0.5) * h;
+                    microCtx.save();
+                    microCtx.translate(x, y);
+                    microCtx.rotate(i);
+                    microCtx.fillRect(-12, -4, 24, 8);
+                    microCtx.restore();
+                }
+            } else if (currentSpecimen === 'chloroplast') {
+                // Chloroplast cells
+                microCtx.strokeStyle = '#22c55e';
+                microCtx.lineWidth = 3;
+                for (let i = 0; i < 12; i++) {
+                    const x = ((i % 4) * 0.22 + 0.18) * w;
+                    const y = (Math.floor(i / 4) * 0.25 + 0.2) * h;
+                    microCtx.strokeRect(x - 30, y - 25, 60, 50);
+                    microCtx.fillStyle = '#15803d';
+                    for (let j = 0; j < 5; j++) {
+                        microCtx.beginPath();
+                        microCtx.arc(x - 15 + j * 7, y, 5, 0, Math.PI * 2);
+                        microCtx.fill();
+                    }
+                }
+            } else {
+                // Crystal Lattice
+                microCtx.strokeStyle = '#38bdf8';
+                microCtx.lineWidth = 1.5;
+                const step = 40;
+                for (let x = 60; x < w - 60; x += step) {
+                    for (let y = 60; y < h - 60; y += step) {
+                        microCtx.strokeRect(x, y, step, step);
+                    }
+                }
+            }
+        }
+
+        // --- 7. UI Modal Controls ---
+        // Periodic Table Drawer Population
+        const periodicModal = document.getElementById('periodic-modal');
+        document.getElementById('open-periodic-btn').addEventListener('click', () => {
+            populatePeriodicGrid();
+            periodicModal.classList.remove('hidden');
+        });
+        document.getElementById('close-periodic-btn').addEventListener('click', () => {
+            periodicModal.classList.add('hidden');
+        });
+
+        function populatePeriodicGrid() {
+            const grid = document.getElementById('periodic-grid');
+            if (grid.children.length > 0) return;
+
+            const elements = [
+                { sym: 'H', num: 1 }, { sym: 'He', num: 2 },
+                { sym: 'Li', num: 3 }, { sym: 'Be', num: 4 }, { sym: 'B', num: 5 }, { sym: 'C', num: 6 }, { sym: 'N', num: 7 }, { sym: 'O', num: 8 }, { sym: 'F', num: 9 }, { sym: 'Ne', num: 10 },
+                { sym: 'Na', num: 11 }, { sym: 'Mg', num: 12 }, { sym: 'Al', num: 13 }, { sym: 'Si', num: 14 }, { sym: 'P', num: 15 }, { sym: 'S', num: 16 }, { sym: 'Cl', num: 17 }, { sym: 'Ar', num: 18 },
+                { sym: 'K', num: 19 }, { sym: 'Ca', num: 20 }, { sym: 'Fe', num: 26 }, { sym: 'Cu', num: 29 }, { sym: 'Zn', num: 30 }, { sym: 'Au', num: 79 }
+            ];
+
+            elements.forEach(el => {
+                const btn = document.createElement('button');
+                btn.className = "glass-btn p-2 rounded-lg flex flex-col items-center justify-center hover:border-cyan-400 transition-all";
+                btn.innerHTML = `
+                    <span class="text-[9px] text-slate-400">${el.num}</span>
+                    <span class="font-bold text-xs text-slate-100">${el.sym}</span>
+                `;
+                btn.onclick = () => {
+                    addChemical(el.sym);
+                    periodicModal.classList.add('hidden');
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        // Microscope Station Modal
+        const microModal = document.getElementById('microscope-overlay');
+        document.getElementById('microscope-mode-btn').addEventListener('click', () => {
+            microModal.classList.remove('hidden');
+            drawMicroscopeView();
+        });
+        document.getElementById('close-microscope-btn').addEventListener('click', () => {
+            microModal.classList.add('hidden');
+        });
+
+        // Bunsen Burner Toggle
+        let burnerActive = false;
+        document.getElementById('burner-toggle').addEventListener('click', (e) => {
+            burnerActive = !burnerActive;
+            e.target.innerText = burnerActive ? "ON" : "OFF";
+            e.target.className = burnerActive 
+                ? "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-md shadow-amber-500/50"
+                : "px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300";
+            
+            if (flameMesh) flameMesh.material.opacity = burnerActive ? 0.85 : 0.0;
+            vesselState.isBoiling = burnerActive;
+            if (burnerActive) {
+                sfx.playFizz();
+                notifyProfManuhe("Bunsen burner ignited! Vessel contents heating up to reaction threshold.");
+            }
+        });
+
+        // Safety Gear Toggle
+        let safetyActive = true;
+        document.getElementById('toggle-safety-btn').addEventListener('click', () => {
+            safetyActive = !safetyActive;
+            const status = document.getElementById('safety-status');
+            status.innerText = safetyActive ? "ON" : "OFF";
+            status.className = safetyActive ? "text-emerald-400" : "text-rose-400";
+            notifyProfManuhe(safetyActive ? "Safety goggles and lab gloves equipped." : "WARNING: Safety gear removed. Exercise extreme caution on the bench!");
+        });
+
+        // Initialize Application on Window Load
+        window.onload = () => {
+            init3DLab();
+            lucide.createIcons();
+        };
+    </script>
 </body>
 </html>
