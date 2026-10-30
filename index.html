@@ -326,8 +326,8 @@
       contents.push(symbol);
       beakerVolume += 20;
 
-      // Reaction check: Na + H2O -> Explosion
-      if (contents.includes('Na') && contents.includes('H2O')) {
+      // Reaction check: KNa + H2O -> Explosion
+      if (contents.includes('KNa') && contents.includes('H2O')) {
         triggerExplosion();
         return;
       }
@@ -349,8 +349,8 @@
     function triggerExplosion() {
       beakerTemp = 250;
       document.getElementById('temp-val').innerText = beakerTemp;
-      liquidMesh.material.color.setHex(0xef4444);
-      profTalk("⚠️ WARNING! Violent Exothermic Reaction detected! Sodium reacts violently with water producing Hydrogen gas and intense heat!");
+      liquidMesh.material.color.setHex(0xef4444); 
+      profTalk("⚠️ WARNING! Violent Exothermic Reaction detected! Sodium pottasium reacts violently with water producing Hydrogen gas and intense heat!");
       
       // Camera shake simulation
       let shakeCount = 0;
@@ -395,7 +395,7 @@
       input.value = '';
       
       setTimeout(() => {
-        profTalk(`Regarding "${val}": As Professor Manuhe, I can explain that chemical stoichiometry and atomic interactions govern this principle. Try combining elements in the lab to observe visual changes!`);
+        profTalk(`Regarding "${val}": As Professor Manuhe, Hello I can explain that chemical stoichiometry and atomic interactions govern this principle. Try combining elements in the lab to observe visual changes!`);
       }, 800);
     }
 
